@@ -13,7 +13,6 @@ class PersonRepositoryDatabaseSpec extends PlaySpec with PersonHelper with Befor
   var database : Database = null
 
   before {
-    println("test before")
     database = Databases(
       driver = "com.mysql.cj.jdbc.Driver",
       url = "jdbc:mysql://127.0.0.1:3306/notepadTest?autoReconnect=true&useSSL=false",
@@ -33,13 +32,21 @@ class PersonRepositoryDatabaseSpec extends PlaySpec with PersonHelper with Befor
 
   "A PersonRepositoryDatabase" must {
     "be able to insert a person" in {
-      println("okay")
       val personRepositoryDatabase = new PersonRepositoryDatabase(database)
-      println(person1)
       val personId: Long = personRepositoryDatabase.insertPerson(person1)
 
       val expectedPerson : Person = person1.copy(id=Some(personId))
       val actualPerson : Person = personRepositoryDatabase.getPerson(personId)
+
+      expectedPerson mustBe actualPerson
+    }
+
+    "be able to get a person by email" in {
+      val personRepositoryDatabase = new PersonRepositoryDatabase(database)
+      val personId: Long = personRepositoryDatabase.insertPerson(person1)
+
+      val expectedPerson : Person = person1.copy(id=Some(personId))
+      val actualPerson : Person = personRepositoryDatabase.getPersonByEmail(person1.email)
 
       expectedPerson mustBe actualPerson
     }
