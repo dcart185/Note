@@ -1,11 +1,23 @@
 package models
 
 import play.api.libs.json._
+import play.api.libs.functional.syntax._
+
 
 case class Person(id:Option[Long], firstName:String, lastName:String, email:String, password:Option[String])
 
 object Person {
   import Person._
+
+
+  implicit val personReads : Reads[Person] = (
+    (JsPath \ "id").readNullable[Long] and
+    (JsPath \ "firstName").read[String] and
+    (JsPath \ "lastName").read[String] and
+    (JsPath \ "email").read[String] and
+    (JsPath \ "password").readNullable[String]
+    )(Person.apply _)
+
 
   implicit val personWrites : Writes[Person] = new Writes[Person] {
     override def writes(person: Person): JsValue = Json.obj(
