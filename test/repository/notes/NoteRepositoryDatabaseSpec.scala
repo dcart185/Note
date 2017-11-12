@@ -1,12 +1,12 @@
-package repository.person
+package repository.notes
 
 import globals.{NotesHelper, PersonHelper}
 import models.Note
 import org.scalatest.BeforeAndAfter
 import org.scalatestplus.play.PlaySpec
-import play.api.db.{Database, Databases}
 import play.api.db.evolutions.Evolutions
-import repository.notes.NotesRepositoryDatabase
+import play.api.db.{Database, Databases}
+import repository.person.PersonRepositoryDatabase
 
 class NoteRepositoryDatabaseSpec extends PlaySpec with NotesHelper with PersonHelper with BeforeAndAfter{
   var database : Database = null
@@ -42,6 +42,19 @@ class NoteRepositoryDatabaseSpec extends PlaySpec with NotesHelper with PersonHe
       val actualNote = notesRepositoryDatabase.getNote(noteId)
 
       expectedNote mustBe actualNote
+    }
+    "be able to delete note" in {
+      val personRepositoryDatabase = new PersonRepositoryDatabase(database)
+      val personId = personRepositoryDatabase.insertPerson(person1)
+
+      val notesRepositoryDatabase = new NotesRepositoryDatabase(database)
+      val noteId : Long = notesRepositoryDatabase.insertNote(note1)
+
+      notesRepositoryDatabase.deleteNote(noteId)
+
+      val actualNote : Note = notesRepositoryDatabase.getNote(noteId)
+      actualNote mustBe null
+
     }
   }
 }
