@@ -22,8 +22,8 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
         BadRequest(Json.obj("status" ->"KO", "message" -> JsError.toJson(errors)))
       },
       person => {
-        println(s"The person is $person")
-        Ok(Json.obj("status" ->"OK", "message" -> ("Place '"+person.firstName+"' saved.") ))
+        val savedPerson : Person = personService.insertPerson(person)
+        Ok(Json.obj("status" ->"OK", "message" -> (s"The user has been saved with id: ${savedPerson.id.get}") ))
       }
     )
   }
