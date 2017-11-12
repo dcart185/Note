@@ -64,18 +64,18 @@ class NotesRepositoryDatabase @Inject()(db:Database) extends NotesRepository {
     }
   }
 
-  override def getNote(id: Long): Note = {
+  override def getNote(id: Long): Option[Note] = {
     var connection : Connection = null
     var cstm : CallableStatement = null
     var rs:ResultSet = null
-    var note : Note = null
+    var note : Option[Note] = None
     try{
       connection = db.getConnection()
       cstm = connection.prepareCall("{CALL SP_GET_NOTE(?)}")
       cstm.setLong("in_id",id)
       rs = cstm.executeQuery()
       if(rs.next())
-        note = resultSetToNote(rs)
+        note = Some(resultSetToNote(rs))
       note
     }
     finally {

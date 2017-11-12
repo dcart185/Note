@@ -39,9 +39,9 @@ class NoteRepositoryDatabaseSpec extends PlaySpec with NotesHelper with PersonHe
 
 
       val expectedNote : Note = note1.copy(id=Some(noteId))
-      val actualNote = notesRepositoryDatabase.getNote(noteId)
+      val actualNote : Option[Note]= notesRepositoryDatabase.getNote(noteId)
 
-      expectedNote mustBe actualNote
+      expectedNote mustBe actualNote.get
     }
     "be able to delete note" in {
       val personRepositoryDatabase = new PersonRepositoryDatabase(database)
@@ -52,8 +52,8 @@ class NoteRepositoryDatabaseSpec extends PlaySpec with NotesHelper with PersonHe
 
       notesRepositoryDatabase.deleteNote(noteId)
 
-      val actualNote : Note = notesRepositoryDatabase.getNote(noteId)
-      actualNote mustBe null
+      val actualNote : Option[Note] = notesRepositoryDatabase.getNote(noteId)
+      actualNote mustBe None
 
     }
     "be able to update note" in {
@@ -69,8 +69,8 @@ class NoteRepositoryDatabaseSpec extends PlaySpec with NotesHelper with PersonHe
 
       notesRepositoryDatabase.updateNote(expectedNote)
 
-      val actualNote = notesRepositoryDatabase.getNote(noteId)
-      expectedNote mustBe actualNote
+      val actualNote : Option[Note]= notesRepositoryDatabase.getNote(noteId)
+      expectedNote mustBe actualNote.get
     }
   }
 }

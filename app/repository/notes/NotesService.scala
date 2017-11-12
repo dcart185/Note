@@ -18,7 +18,7 @@ class NotesService(notesRepository: NotesRepository) {
     if(updateCount == 1) true
     else false
   }
-  def getNote(id:Long):Note ={
+  def getNote(id:Long):Option[Note] ={
     notesRepository.getNote(id)
   }
 }
