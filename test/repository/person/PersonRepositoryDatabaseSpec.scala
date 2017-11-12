@@ -36,9 +36,9 @@ class PersonRepositoryDatabaseSpec extends PlaySpec with PersonHelper with Befor
       val personId: Long = personRepositoryDatabase.insertPerson(person1)
 
       val expectedPerson : Person = person1.copy(id=Some(personId))
-      val actualPerson : Person = personRepositoryDatabase.getPerson(personId)
+      val actualPerson : Option[Person] = personRepositoryDatabase.getPerson(personId)
 
-      expectedPerson mustBe actualPerson
+      expectedPerson mustBe actualPerson.get
     }
 
     "be able to get a person by email" in {
@@ -46,9 +46,9 @@ class PersonRepositoryDatabaseSpec extends PlaySpec with PersonHelper with Befor
       val personId: Long = personRepositoryDatabase.insertPerson(person1)
 
       val expectedPerson : Person = person1.copy(id=Some(personId))
-      val actualPerson : Person = personRepositoryDatabase.getPersonByEmail(person1.email)
+      val actualPerson : Option[Person] = personRepositoryDatabase.getPersonByEmail(person1.email)
 
-      expectedPerson mustBe actualPerson
+      expectedPerson mustBe actualPerson.get
     }
   }
 

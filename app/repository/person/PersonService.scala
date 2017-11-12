@@ -9,11 +9,11 @@ class PersonService(personRepository: PersonRepository) {
     Person(Some(personId),person.firstName,person.lastName,person.email,person.password)
   }
 
-  def getPerson(personId:Long):Person ={
+  def getPerson(personId:Long):Option[Person] ={
     personRepository.getPerson(personId)
   }
 
-  def getPersonByEmail(email:String):Person ={
+  def getPersonByEmail(email:String):Option[Person] ={
     personRepository.getPersonByEmail(email)
   }
 }
