@@ -3,6 +3,7 @@ package controllers
 import javax.inject.{Inject, Singleton}
 
 import models.Person
+import org.mindrot.jbcrypt.BCrypt
 import play.api.libs.json.{JsError, Json}
 import play.api.mvc._
 import repository.person.{PersonRepository, PersonService}
@@ -15,15 +16,22 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
  val personService : PersonService = new PersonService(personRepository)
 
   def insertPerson() = Action(parse.json) { implicit request =>
-
     val personResult = request.body.validate[Person]
     personResult.fold(
       errors => {
-        BadRequest(Json.obj("status" ->"KO", "message" -> JsError.toJson(errors)))
+        BadRequest(Json.obj("status" ->"KO", "message" -> "invalid input"))
       },
       person => {
-        val savedPerson : Person = personService.insertPerson(person)
-        Ok(Json.obj("status" ->"OK", "message" -> (s"The user has been saved with id: ${savedPerson.id.get}") ))
+
+        if(person.password.nonEmpty) {
+          val hashedPassword: String = BCrypt.hashpw(person.password.get, BCrypt.gensalt())
+          val toBeSavedPerson : Person = person.copy(password = Some(hashedPassword))
+          val savedPerson: Person = personService.insertPerson(toBeSavedPerson)
+          Ok(Json.obj("status" -> "OK", "message" -> (s"The user has been saved with id: ${savedPerson.id.get}")))
+        }
+        else{
+          BadRequest(Json.obj("status" ->"KO", "message" -> "invalid input"))
+        }
       }
     )
   }

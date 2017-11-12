@@ -14,6 +14,8 @@ libraryDependencies += jdbc
 libraryDependencies += jdbc % Test
 libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.8-dmr"
 libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test
+libraryDependencies += "org.mindrot" % "jbcrypt" % "0.4"
+
 
 // Adds additional packages into Twirl
 //TwirlKeys.templateImports += "com.dcart185.controllers._"
