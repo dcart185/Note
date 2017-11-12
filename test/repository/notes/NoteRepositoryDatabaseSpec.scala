@@ -56,5 +56,21 @@ class NoteRepositoryDatabaseSpec extends PlaySpec with NotesHelper with PersonHe
       actualNote mustBe null
 
     }
+    "be able to update note" in {
+      val personRepositoryDatabase = new PersonRepositoryDatabase(database)
+      val personId = personRepositoryDatabase.insertPerson(person1)
+
+      val notesRepositoryDatabase = new NotesRepositoryDatabase(database)
+      val noteId : Long = notesRepositoryDatabase.insertNote(note1)
+
+      val newSubject = "testNewSubject"
+      val newNote = "testNewNote"
+      val expectedNote : Note = note1.copy(id=Some(noteId),subject = newSubject, note = newNote)
+
+      notesRepositoryDatabase.updateNote(expectedNote)
+
+      val actualNote = notesRepositoryDatabase.getNote(noteId)
+      expectedNote mustBe actualNote
+    }
   }
 }
