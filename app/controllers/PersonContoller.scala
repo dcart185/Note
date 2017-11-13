@@ -4,9 +4,10 @@ import javax.inject.{Inject, Singleton}
 
 import models.Person
 import org.mindrot.jbcrypt.BCrypt
-import play.api.libs.json.{JsError, Json}
+import play.api.libs.json.{JsError, JsValue, Json}
 import play.api.mvc._
 import repository.person.{PersonRepository, PersonService}
+import play.api.libs.functional.syntax._
 
 
 @Singleton
@@ -47,6 +48,25 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
       case Some(person)=>{
         val json = Json.toJson(person)
         Ok(json)
+      }
+    }
+  }
+
+  def authenticateUserCreds() = Action(parse.json) { implicit request: Request[JsValue] =>
+    val email : String = (request.body \ "email").as[String]
+    val candidate : String = (request.body \ "password").as[String]
+
+    val personOpt : Option[Person] = personService.getPersonByEmail(email)
+
+    personOpt match {
+      case Some(person)=>{
+        if (BCrypt.checkpw(candidate, person.password.get))
+          Ok("Its valid")
+        else
+          Forbidden(Json.obj("message" -> "invalid user"))
+      }
+      case None =>{
+        Forbidden(Json.obj("message" -> "invalid user"))
       }
     }
   }

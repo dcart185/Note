@@ -1,4 +1,6 @@
 
-POST    /       controllers.PersonController.insertPerson
+POST    /               controllers.PersonController.insertPerson
 
-GET     /:id    controllers.PersonController.getPerson(id:Long)
+GET     /:id            controllers.PersonController.getPerson(id:Long)
+
+POST    /authCreds      controllers.PersonController.authenticateUserCreds
