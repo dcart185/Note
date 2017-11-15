@@ -2,6 +2,8 @@ package controllers
 
 import javax.inject.{Inject, Singleton}
 
+import com.typesafe.config.Config
+import io.jsonwebtoken.{CompressionCodecs, Jwts, SignatureAlgorithm}
 import models.Person
 import org.mindrot.jbcrypt.BCrypt
 import play.api.libs.json.{JsError, JsValue, Json}
@@ -13,10 +15,11 @@ import scala.concurrent.{ExecutionContext, Future}
 
 
 @Singleton
-class PersonController @Inject()(cc: ControllerComponents, personRepository: PersonRepository)
+class PersonController @Inject()(cc: ControllerComponents, personRepository: PersonRepository,config:Config)
                                 (implicit ec:ExecutionContext) extends AbstractController(cc) {
 
- val personService : PersonService = new PersonService(personRepository)
+  val personService : PersonService = new PersonService(personRepository)
+  val token = "token"
 
   def insertPerson() = Action.async(parse.json) { implicit request =>
     val personResult = request.body.validate[Person]
@@ -72,8 +75,15 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
     personOptionFuture.map(personOpt =>{
       personOpt match {
         case Some(person)=>{
-          if (BCrypt.checkpw(candidate, person.password.get))
-            Ok("Its valid")
+          if (BCrypt.checkpw(candidate, person.password.get)) {
+            val key = config.getString("jwt.key")
+            val json = Json.toJson(person)
+            val compactJws : String = Jwts.builder()
+              .setPayload(json.toString()).signWith(SignatureAlgorithm.HS512,key)
+              .compact()
+
+            Ok(json).withHeaders(token->compactJws)
+          }
           else
             Forbidden(Json.obj("message" -> "invalid"))
         }
