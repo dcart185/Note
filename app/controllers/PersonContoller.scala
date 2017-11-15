@@ -34,7 +34,7 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
             Ok(Json.obj("status" -> "OK", "message" -> (s"The user has been saved with id: ${person.id.get}")))
           }).recover{
             case e:Exception=>{
-              InternalServerError(Json.obj("status" ->"KO", "message" -> "invalid input"))
+              InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
             }
           }
         }
@@ -59,26 +59,31 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
       }
     }).recover{
       case e:Exception=>{
-        InternalServerError(Json.obj("status" ->"KO", "message" -> "invalid input"))
+        InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
       }
     }
   }
 
-  def authenticateUserCreds() = Action(parse.json) { implicit request: Request[JsValue] =>
+  def authenticateUserCreds() = Action.async(parse.json) { implicit request: Request[JsValue] =>
     val email : String = (request.body \ "email").as[String]
     val candidate : String = (request.body \ "password").as[String]
 
-    val personOpt : Option[Person] = personService.getPersonByEmail(email)
-
-    personOpt match {
-      case Some(person)=>{
-        if (BCrypt.checkpw(candidate, person.password.get))
-          Ok("Its valid")
-        else
-          Forbidden(Json.obj("message" -> "invalid user"))
+    val personOptionFuture : Future[Option[Person]] = Future(personService.getPersonByEmail(email))
+    personOptionFuture.map(personOpt =>{
+      personOpt match {
+        case Some(person)=>{
+          if (BCrypt.checkpw(candidate, person.password.get))
+            Ok("Its valid")
+          else
+            Forbidden(Json.obj("message" -> "invalid"))
+        }
+        case None =>{
+          Forbidden(Json.obj("message" -> "invalid"))
+        }
       }
-      case None =>{
-        Forbidden(Json.obj("message" -> "invalid user"))
+    }).recover{
+      case e:Exception=>{
+        InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
       }
     }
   }
