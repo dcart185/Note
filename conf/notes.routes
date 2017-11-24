@@ -1,0 +1,2 @@
+
+GET     /:noteId            controllers.NotesController.getNote(noteId:Long)

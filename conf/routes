@@ -4,6 +4,7 @@
 # ~~~~
 
 -> /person  person.Routes
+-> /note    notes.Routes
 
 
 # An example controller showing a sample home page

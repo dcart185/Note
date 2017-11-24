@@ -3,13 +3,12 @@ package controllers
 import javax.inject.{Inject, Singleton}
 
 import com.typesafe.config.Config
-import io.jsonwebtoken.{CompressionCodecs, Jwts, SignatureAlgorithm}
 import models.Person
 import org.mindrot.jbcrypt.BCrypt
-import play.api.libs.json.{JsError, JsValue, Json}
+import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
 import repository.person.{PersonRepository, PersonService}
-import play.api.libs.functional.syntax._
+import utility.JwtUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -76,12 +75,9 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
       personOpt match {
         case Some(person)=>{
           if (BCrypt.checkpw(candidate, person.password.get)) {
-            val key = config.getString("jwt.key")
             val json = Json.toJson(person)
-            val compactJws : String = Jwts.builder()
-              .setPayload(json.toString()).signWith(SignatureAlgorithm.HS512,key)
-              .compact()
-
+            val key = config.getString("jwt.key")
+            val compactJws = JwtUtil.createTokenFromPerson(person,key)
             Ok(json).withHeaders(token->compactJws)
           }
           else
