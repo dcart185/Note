@@ -4,3 +4,5 @@ GET     /:noteId            controllers.NotesController.getNote(noteId:Long)
 DELETE  /:noteId            controllers.NotesController.deleteNote(noteId:Long)
 
 POST    /                   controllers.NotesController.insertNote
+
+POST    /:noteId            controllers.NotesController.updateNote(noteId:Long)

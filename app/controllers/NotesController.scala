@@ -63,6 +63,30 @@ class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAu
     )
   }
 
+  def updateNote(noteId:Long) = jwtAuthentication.async(parse.json){ implicit  request =>
+
+    val noteResult = request.request.body.validate[Note]
+
+    noteResult.fold(
+      errors => {
+        logger.logger.error("Invalid input")
+        Future(BadRequest(Json.obj("status" ->"KO", "message" -> "invalid input")))
+      },
+      note => {
+        val toInsertNote : Note = note.copy(id=Some(noteId),personId = request.person.id)
+        val didNoteSucceedFuture : Future[Boolean]= Future(notesService.updateNote(toInsertNote))
+        didNoteSucceedFuture.map(status =>{
+          Ok(Json.obj("status" -> "OK", "message" -> (s"The note has been updated")))
+        }).recover{
+          case e:Exception =>{
+            logger.logger.error("something went wrong",e)
+            InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
+          }
+        }
+      }
+    )
+  }
+
   def deleteNote(noteId:Long) = jwtAuthentication.async{ implicit request =>
 
     val noteFuture : Future[Option[Note]] = Future(notesService.getNote(noteId))
