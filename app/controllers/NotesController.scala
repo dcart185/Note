@@ -70,7 +70,7 @@ class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAu
     noteFuture.flatMap({
       case Some(note)=>{
 
-        if(note.personId == request.person.id.get){
+        if(note.personId == request.person.id){
           val deleteResultFuture : Future[Boolean] = Future(notesService.deleteNote(noteId))
           deleteResultFuture.map(result =>{
             if(result){
