@@ -15,7 +15,7 @@ class NotesRepositoryDatabase @Inject()(db:Database) extends NotesRepository {
     try{
       connection = db.getConnection()
       cstm = connection.prepareCall("{CALL SP_INSERT_NOTE(?,?,?,?)}")
-      cstm.setLong("in_person_id",note.personId)
+      cstm.setLong("in_person_id",note.personId.get)
       cstm.setString("in_subject",note.subject)
       cstm.setString("in_note",note.note)
       cstm.executeUpdate()
@@ -35,7 +35,7 @@ class NotesRepositoryDatabase @Inject()(db:Database) extends NotesRepository {
       connection = db.getConnection()
       cstm = connection.prepareCall("{CALL SP_UPDATE_NOTE(?,?,?,?)}")
       cstm.setLong("in_id",note.id.get)
-      cstm.setLong("in_person_id",note.personId)
+      cstm.setLong("in_person_id",note.personId.get)
       cstm.setString("in_subject",note.subject)
       cstm.setString("in_note",note.note)
       cstm.executeUpdate()
@@ -92,6 +92,6 @@ class NotesRepositoryDatabase @Inject()(db:Database) extends NotesRepository {
     val subject= resultSet.getString("subject")
     val note= resultSet.getString("note")
 
-    Note(Some(id),personId,subject,note)
+    Note(Some(id),Some(personId),subject,note)
   }
 }

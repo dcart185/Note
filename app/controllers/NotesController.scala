@@ -49,7 +49,8 @@ class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAu
         Future(BadRequest(Json.obj("status" ->"KO", "message" -> "invalid input")))
       },
       note => {
-        val newNoteFuture : Future[Note]= Future(notesService.insertNote(note))
+        val toInsertNote : Note = note.copy(personId = request.person.id)
+        val newNoteFuture : Future[Note]= Future(notesService.insertNote(toInsertNote))
         newNoteFuture.map(newNote =>{
           Ok(Json.obj("status" -> "OK", "message" -> (s"The note has been saved with id: ${newNote.id.get}")))
         }).recover{
