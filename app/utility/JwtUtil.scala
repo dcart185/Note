@@ -2,18 +2,21 @@ package utility
 
 import java.security.SignatureException
 
-import io.jsonwebtoken.{Claims, Jws, Jwts, SignatureAlgorithm}
+import io.jsonwebtoken._
 import models.Person
+import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json.{JsValue, Json}
 
 object JwtUtil {
   val logger: Logger = Logger(this.getClass())
 
-  def createTokenFromPerson(person:Person,key:String):String ={
+  def createTokenFromPerson(person:Person,key:String,expiration:DateTime):String ={
     val json = Json.toJson(person)
     Jwts.builder()
       .setSubject(json.toString()).signWith(SignatureAlgorithm.HS512,key)
+      .setExpiration(expiration.toDate)
+      .compressWith(CompressionCodecs.DEFLATE)
       .compact()
 
   }

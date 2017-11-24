@@ -4,6 +4,7 @@ import javax.inject.{Inject, Singleton}
 
 import com.typesafe.config.Config
 import models.Person
+import org.joda.time.DateTime
 import org.mindrot.jbcrypt.BCrypt
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
@@ -77,7 +78,9 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
           if (BCrypt.checkpw(candidate, person.password.get)) {
             val json = Json.toJson(person)
             val key = config.getString("jwt.key")
-            val compactJws = JwtUtil.createTokenFromPerson(person,key)
+            val seconds = config.getInt("jwt.expiration")
+            val expiration : DateTime = DateTime.now().plusSeconds(seconds)
+            val compactJws = JwtUtil.createTokenFromPerson(person,key,expiration)
             Ok(json).withHeaders(token->compactJws)
           }
           else
