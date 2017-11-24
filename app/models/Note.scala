@@ -9,7 +9,7 @@ case class Note(id:Option[Long], personId:Long, subject:String, note:String)
 object Note {
   import Note._
 
-  implicit val personReads : Reads[Note] = (
+  implicit val notesReads : Reads[Note] = (
     (JsPath \ "id").readNullable[Long] and
       (JsPath \ "personId").read[Long] and
       (JsPath \ "subject").read[String] and

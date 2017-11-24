@@ -1,2 +1,4 @@
 
 GET     /:noteId            controllers.NotesController.getNote(noteId:Long)
+
+POST    /                   controllers.NotesController.insertNote
