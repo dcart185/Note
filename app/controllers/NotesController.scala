@@ -61,4 +61,39 @@ class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAu
       }
     )
   }
+
+  def deleteNote(noteId:Long) = jwtAuthentication.async{ implicit request =>
+
+    val noteFuture : Future[Option[Note]] = Future(notesService.getNote(noteId))
+
+    noteFuture.flatMap({
+      case Some(note)=>{
+
+        if(note.personId == request.person.id.get){
+          val deleteResultFuture : Future[Boolean] = Future(notesService.deleteNote(noteId))
+          deleteResultFuture.map(result =>{
+            if(result){
+              Ok(Json.obj("status" -> "OK", "message" -> (s"The note has been deleted")))
+            }
+            else{
+              BadRequest(Json.obj("status" ->"KO", "message" -> "Unable to delete note"))
+            }
+          }).recover{
+            case e:Exception =>{
+              logger.logger.error("something went wrong",e)
+              InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
+            }
+          }
+        }
+        else{
+          Future(Forbidden("You don't have access to delete this note"))
+        }
+
+        Future(Ok(Json.obj("status" -> "OK", "message" -> (s"The note has been deleted"))))
+      }
+      case None =>{
+        Future(BadRequest(Json.obj("status" ->"KO", "message" -> "Unable to delete note since it does not exist")))
+      }
+    })
+  }
 }
