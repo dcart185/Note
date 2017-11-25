@@ -62,15 +62,12 @@ object CryptoUtil {
   }
 
   def macThenDecrypt(data:Array[Byte],aesKey:Array[Byte],macKey:Array[Byte]):Either[DecryptFailure,Array[Byte]]={
-    val iv : Array[Byte] = Array.fill[Byte](ivSize)(0)
-    val macTag : Array[Byte] = Array.fill[Byte](macDigest.getDigestSize)(0)
     val encryptedDataSize = data.length - (ivSize + macDigest.getDigestSize)
-    val encryptedData : Array[Byte] = Array.fill[Byte](encryptedDataSize)(0)
 
-    System.arraycopy(data,0,iv,0,ivSize)
-    System.arraycopy(data,iv.length,encryptedData,0,encryptedDataSize)
-    System.arraycopy(data,encryptedDataSize+iv.length,macTag,0,macTag.length)
-    
+    val iv : Array[Byte] = data.take(ivSize)
+    val encryptedData : Array[Byte] = data.slice(ivSize,ivSize+encryptedDataSize)
+    val macTag : Array[Byte] = data.takeRight(macDigest.getDigestSize)
+
     val computedTag : Array[Byte] = hashMacEncryptedData(encryptedData,macKey)
 
     if(MessageDigest.isEqual(computedTag,macTag)){
