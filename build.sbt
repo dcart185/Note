@@ -16,6 +16,7 @@ libraryDependencies += "mysql" % "mysql-connector-java" % "8.0.8-dmr"
 libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test
 libraryDependencies += "org.mindrot" % "jbcrypt" % "0.4"
 libraryDependencies += "io.jsonwebtoken" % "jjwt" % "0.9.0"
+libraryDependencies += "org.bouncycastle" % "bcprov-jdk15on" % "1.58"
 //libraryDependencies += "org.bitbucket.b_c" % "jose4j" % "0.6.2"
 
 
