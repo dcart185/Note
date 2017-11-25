@@ -61,6 +61,13 @@ object CryptoUtil {
     newByteArray
   }
 
+  /**
+    *
+    * @param data the data to be decrypted
+    * @param aesKey the key used to decrypt the data
+    * @param macKey the key used to mac the encrypted data
+    * @return either a failure result or the actual decrypted data
+    */
   def macThenDecrypt(data:Array[Byte],aesKey:Array[Byte],macKey:Array[Byte]):Either[DecryptFailure,Array[Byte]]={
     val encryptedDataSize = data.length - (ivSize + macDigest.getDigestSize)
 
