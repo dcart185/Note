@@ -11,7 +11,7 @@ import org.bouncycastle.crypto.params.{KDFParameters, KeyParameter, ParametersWi
 
 
 object CryptoUtil {
-  val defaultChunkSize = 32
+  val defaultChunkSize = 64
   val bitBlockSize = 8
 
   /**

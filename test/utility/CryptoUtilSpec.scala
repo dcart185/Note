@@ -27,8 +27,6 @@ class CryptoUtilSpec extends PlaySpec with BeforeAndAfter{
 
       val toBeEncrypted: String = "Here is some random text that needs to be encrypted.  Unit test only!"
       val toBeEncryptedBytes: Array[Byte] = toBeEncrypted.getBytes()
-      println(s"text:$toBeEncrypted")
-      println(s"text length:${toBeEncryptedBytes.length}")
 
       val random: Random = new SecureRandom()
       val iv: Array[Byte] = Array.fill[Byte](16)(0)
@@ -37,13 +35,10 @@ class CryptoUtilSpec extends PlaySpec with BeforeAndAfter{
       random.nextBytes(key)
 
       val encryptedData = CryptoUtil.encryptData(toBeEncryptedBytes, iv, key)
-      println(s"Encrypted length:${encryptedData.length}")
 
       val decryptedData = CryptoUtil.decryptData(encryptedData, iv, key)
-      println(s"The decrpyted length:${decryptedData.length}")
       val decryptedText: String = new String(decryptedData)
 
-      println(s"The decrypted text:$decryptedText")
       toBeEncrypted mustEqual decryptedText
 
     }
