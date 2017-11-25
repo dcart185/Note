@@ -1,6 +1,6 @@
 package utility
 
-import java.security.SecureRandom
+import java.security.{MessageDigest, SecureRandom}
 import java.util.Random
 
 import org.scalatest.BeforeAndAfter
@@ -41,6 +41,22 @@ class CryptoUtilSpec extends PlaySpec with BeforeAndAfter{
 
       toBeEncrypted mustEqual decryptedText
 
+    }
+
+    "be able to mac" in {
+      val toBeEncrypted: String = "Here is some random text that needs to be encrypted and mac"
+      val random: Random = new SecureRandom()
+      val iv: Array[Byte] = Array.fill[Byte](16)(0)
+      val key: Array[Byte] = Array.fill[Byte](16)(0)
+      val macKey: Array[Byte] = Array.fill[Byte](16)(0)
+
+      val encryptedData = CryptoUtil.encryptData(toBeEncrypted.getBytes(), iv, key)
+
+      val tag : Array[Byte] = CryptoUtil.hashMacEncryptedData(encryptedData,macKey)
+      val tag2 : Array[Byte] = CryptoUtil.hashMacEncryptedData(encryptedData,macKey)
+
+      val isEqual = MessageDigest.isEqual(tag,tag2)
+      isEqual mustBe true
     }
   }
 
