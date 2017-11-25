@@ -3,8 +3,10 @@ package utility
 import java.security.{MessageDigest, SecureRandom}
 import java.util.Random
 
+import org.junit.Assert
 import org.scalatest.BeforeAndAfter
 import org.scalatestplus.play.PlaySpec
+import utility.CryptoUtil.DecryptFailure
 
 class CryptoUtilSpec extends PlaySpec with BeforeAndAfter{
 
@@ -57,6 +59,27 @@ class CryptoUtilSpec extends PlaySpec with BeforeAndAfter{
 
       val isEqual = MessageDigest.isEqual(tag,tag2)
       isEqual mustBe true
+    }
+
+    "be able to encrypt then mac" in {
+
+      val toBeEncrypted: String = "testing encrypt then mac and mac then decrypt"
+      val random: Random = new SecureRandom()
+      val aesKey: Array[Byte] = Array.fill[Byte](16)(0)
+      val macKey: Array[Byte] = Array.fill[Byte](16)(0)
+
+      val encryptedData : Array[Byte] = CryptoUtil.encryptThenMac(toBeEncrypted.getBytes(),aesKey,macKey)
+      val decryptedDataEither : Either[DecryptFailure,Array[Byte]] = CryptoUtil.macThenDecrypt(encryptedData,aesKey,macKey)
+
+      decryptedDataEither match {
+        case Left(decryptFailure) => {
+          Assert.fail(decryptFailure.reason)
+        }
+        case Right(decryptedData) => {
+          val decryptedText : String = new String(decryptedData)
+          toBeEncrypted mustEqual decryptedText
+        }
+      }
     }
   }
 

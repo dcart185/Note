@@ -1,5 +1,7 @@
 package utility
 import java.io._
+import java.security.{MessageDigest, SecureRandom}
+import java.util.{Base64, Random}
 
 import org.bouncycastle.crypto.CipherParameters
 import org.bouncycastle.crypto.digests.SHA256Digest
@@ -11,8 +13,12 @@ import org.bouncycastle.crypto.params.{KDFParameters, KeyParameter, ParametersWi
 
 
 object CryptoUtil {
-  val defaultChunkSize = 64
-  val bitBlockSize = 8
+  private val defaultChunkSize = 64
+  private val bitBlockSize = 8
+  private val ivSize = 16
+  private val macDigest = new SHA256Digest
+
+  case class DecryptFailure(reason:String)
 
   /**
     *
@@ -31,6 +37,50 @@ object CryptoUtil {
     data
   }
 
+  /**
+    *
+    * @param data data to be encrypted
+    * @param aesKey key for symetric encryption
+    * @param macKey key for the mac
+    */
+  def encryptThenMac(data:Array[Byte],aesKey:Array[Byte],macKey:Array[Byte]):Array[Byte]={
+    //first create a random iv
+    val random : Random = new SecureRandom()
+    val iv : Array[Byte] = Array.fill[Byte](ivSize)(0)
+    random.nextBytes(iv)
+
+    //encrypt the data
+    val encryptedData : Array[Byte] = encryptData(data,iv,aesKey)
+
+    //mac the data
+    val tag : Array[Byte] = hashMacEncryptedData(encryptedData,macKey)
+
+    //return
+    val newByteArrayLength : Int = ivSize + tag.length + encryptedData.length
+    val newByteArray : Array[Byte] = iv ++ encryptedData ++ tag
+    newByteArray
+  }
+
+  def macThenDecrypt(data:Array[Byte],aesKey:Array[Byte],macKey:Array[Byte]):Either[DecryptFailure,Array[Byte]]={
+    val iv : Array[Byte] = Array.fill[Byte](ivSize)(0)
+    val macTag : Array[Byte] = Array.fill[Byte](macDigest.getDigestSize)(0)
+    val encryptedDataSize = data.length - (ivSize + macDigest.getDigestSize)
+    val encryptedData : Array[Byte] = Array.fill[Byte](encryptedDataSize)(0)
+
+    System.arraycopy(data,0,iv,0,ivSize)
+    System.arraycopy(data,iv.length,encryptedData,0,encryptedDataSize)
+    System.arraycopy(data,encryptedDataSize+iv.length,macTag,0,macTag.length)
+    
+    val computedTag : Array[Byte] = hashMacEncryptedData(encryptedData,macKey)
+
+    if(MessageDigest.isEqual(computedTag,macTag)){
+      val decryptedData : Array[Byte] = decryptData(encryptedData,iv,aesKey)
+      Right(decryptedData)
+    }
+    else{
+      Left(DecryptFailure("Mac tags are not the same"))
+    }
+  }
 
   /**
     *
@@ -85,12 +135,11 @@ object CryptoUtil {
     * @return
     */
   def hashMacEncryptedData(data:Array[Byte],key:Array[Byte]):Array[Byte] ={
-    val digest = new SHA256Digest
-    val hmac : HMac = new HMac(digest)
+    val hmac : HMac = new HMac(macDigest)
     val parameters : CipherParameters = new KeyParameter(key)
     hmac.init(parameters)
 
-    val tag = Array.fill[Byte](digest.getDigestSize)(0)
+    val tag = Array.fill[Byte](macDigest.getDigestSize)(0)
 
     var count = 0
 
