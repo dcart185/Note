@@ -12,10 +12,13 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import repository.notes.{NotesRepository, NotesService}
 import utility.CryptoUtil
+import utility.CryptoUtil.DecryptFailure
 
 import scala.concurrent.{ExecutionContext, Future}
 
-final case class KeyDoesntExist()
+trait UnableToDecrypt
+case object KeyDoesntExist extends UnableToDecrypt
+case object FailedDecryption extends UnableToDecrypt
 
 @Singleton
 class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAuthentication,
@@ -46,19 +49,38 @@ class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAu
     }
   }
 
-  def encryptedNotesContents(note:Note,person:Person) : Either[KeyDoesntExist,String] = {
+  /**
+    * Encrypts the note's contents
+    *
+    * @param note
+    * @param person
+    * @return the encrypted contents as a string
+    */
+  def encryptedNotesContents(note:Note,person:Person) : Either[UnableToDecrypt,String] = {
     (person.userKey,person.masterKey) match {
       case (Some(userKey),Some(masterKey))=>{
         val macKeyString : String = config.getString("mac.key")
 
         //decrypt the master key with the user key
         val encryptedMasterKeyAsBytes : Array[Byte] = Base64.getDecoder().decode(masterKey)
-        //val decryptedMasterKey : Array[Byte] = CryptoUtil.macThenDecrypt(encryptedMasterKeyAsBytes,userKey)
-        //encrypt the note contents with the master key
-        Left(KeyDoesntExist())
+        val userKeyAsBytes : Array[Byte] = Base64.getDecoder().decode(userKey)
+        val decryptedMasterKeyEither : Either[DecryptFailure,Array[Byte]] = CryptoUtil
+          .macThenDecrypt(encryptedMasterKeyAsBytes,userKeyAsBytes, macKeyString.getBytes())
+
+        decryptedMasterKeyEither match {
+          case Left(decryptFailure) => Left(FailedDecryption)
+          case Right(decryptedMasterKeyInBytes)=>{
+            val encryptedNoteContentsInBytes : Array[Byte] = CryptoUtil.encryptThenMac(note.note.getBytes(),
+              decryptedMasterKeyInBytes, macKeyString.getBytes())
+
+            val encryptedNoteContents : String = Base64.getEncoder().encodeToString(encryptedNoteContentsInBytes)
+
+            Right(encryptedNoteContents)
+          }
+        }
       }
       case _ => {
-        Left(KeyDoesntExist())
+        Left(KeyDoesntExist)
       }
     }
   }
@@ -73,17 +95,25 @@ class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAu
         Future(BadRequest(Json.obj("status" ->"KO", "message" -> "invalid input")))
       },
       note => {
+        //encrypt the note
+        val encryptedNoteEither : Either[UnableToDecrypt,String] = encryptedNotesContents(note,request.person)
 
-        //encryptedNotesContents(note,request.person)
-
-        val toInsertNote : Note = note.copy(personId = request.person.id)
-        val newNoteFuture : Future[Note]= Future(notesService.insertNote(toInsertNote))
-        newNoteFuture.map(newNote =>{
-          Ok(Json.obj("status" -> "OK", "message" -> (s"The note has been saved with id: ${newNote.id.get}")))
-        }).recover{
-          case e:Exception =>{
-            logger.logger.error("something went wrong",e)
-            InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
+        encryptedNoteEither match {
+          case Left(unableToDecrypt)=>{
+            logger.logger.error(s"Unable to decrypt $unableToDecrypt")
+            Future(InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong")))
+          }
+          case Right(encryptedNote)=>{
+            val toInsertNote : Note = note.copy(personId = request.person.id,note = encryptedNote)
+            val newNoteFuture : Future[Note]= Future(notesService.insertNote(toInsertNote))
+            newNoteFuture.map(newNote =>{
+              Ok(Json.obj("status" -> "OK", "message" -> (s"The note has been saved with id: ${newNote.id.get}")))
+            }).recover{
+              case e:Exception =>{
+                logger.logger.error("something went wrong",e)
+                InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
+              }
+            }
           }
         }
       }
