@@ -38,8 +38,9 @@ class JWTAuthentication @Inject()(val parser: BodyParsers.Default, personReposit
             val personOptionFuture : Future[Option[Person]] = Future(personService.getPerson(id))
 
             personOptionFuture.flatMap {
-              case Some(person) =>{
-                block(PersonRequest(person,request))
+              case Some(personFromDatabase) =>{
+                val personWithUserKey : Person = personFromDatabase.copy(userKey = person.userKey)
+                block(PersonRequest(personWithUserKey,request))
               }
               case None => Future(Unauthorized("Invalid credential"))
             }

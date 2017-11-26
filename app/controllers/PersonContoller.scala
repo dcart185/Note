@@ -1,5 +1,6 @@
 package controllers
 
+import java.util.Base64
 import javax.inject.{Inject, Singleton}
 
 import com.typesafe.config.Config
@@ -9,7 +10,7 @@ import org.mindrot.jbcrypt.BCrypt
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
 import repository.person.{PersonRepository, PersonService}
-import utility.JwtUtil
+import utility.{CryptoUtil, JwtUtil}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -31,7 +32,24 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
 
         if(person.password.nonEmpty) {
           val hashedPassword: String = BCrypt.hashpw(person.password.get, BCrypt.gensalt())
-          val toBeSavedPerson : Person = person.copy(password = Some(hashedPassword))
+
+          //create a key to encrypt the master key
+          val iv : Array[Byte] = CryptoUtil.createRandomIv()
+          val userKeyArray : Array[Byte] = CryptoUtil.generateKeyFromDerivedByteArray(person.password.get.getBytes(),iv)
+          val userIvString : String = Base64.getEncoder().encodeToString(iv)
+          val userKeyString : String = Base64.getEncoder().encodeToString(userKeyArray)
+
+          //create a random "master" key that is encrypted
+          val masterKey : Array[Byte] = CryptoUtil.createRandomKey()
+          val macKeyAsString : String = config.getString("mac.key")
+          val encryptedMasterKey : Array[Byte] = CryptoUtil.encryptThenMac(masterKey,userKeyArray,macKeyAsString.getBytes())
+          val masterKeyAsString : String = Base64.getEncoder().encodeToString(encryptedMasterKey)
+
+          //update the person object
+          val toBeSavedPerson : Person = person.copy(password = Some(hashedPassword),masterKey=Some(masterKeyAsString),
+            userKey = Some(userKeyString),userIv = Some(userIvString))
+
+          //save the data into the database.  user key will not be saved.  only the user knows!
           val savedPerson: Future[Person] = Future(personService.insertPerson(toBeSavedPerson))
           savedPerson.map(person=>{
             Ok(Json.obj("status" -> "OK", "message" -> (s"The user has been saved with id: ${person.id.get}")))
@@ -50,8 +68,8 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
 
   def getPerson(id:Long)  = Action.async { implicit request =>
     val personOptionFuture : Future[Option[Person]] = Future(personService.getPerson(id))
-    personOptionFuture.map(personOption=>{
-      personOption match {
+    personOptionFuture.map(
+      {
         case None =>{
           NotFound("Person does not exist")
         }
@@ -59,8 +77,7 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
           val json = Json.toJson(person)
           Ok(json)
         }
-      }
-    }).recover{
+      }).recover{
       case e:Exception=>{
         InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
       }
@@ -72,15 +89,24 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
     val candidate : String = (request.body \ "password").as[String]
 
     val personOptionFuture : Future[Option[Person]] = Future(personService.getPersonByEmail(email))
-    personOptionFuture.map(personOpt =>{
-      personOpt match {
+    personOptionFuture.map(
+      {
         case Some(person)=>{
           if (BCrypt.checkpw(candidate, person.password.get)) {
-            val json = Json.toJson(person)
+
             val key = config.getString("jwt.key")
             val seconds = config.getInt("jwt.expiration")
             val expiration : DateTime = DateTime.now().plusSeconds(seconds)
-            val compactJws = JwtUtil.createTokenFromPerson(person,key,expiration)
+
+            val userKeyArray : Array[Byte] = Base64.getDecoder().decode(person.userIv.get)
+
+            val userKey : Array[Byte] = CryptoUtil.generateKeyFromDerivedByteArray(candidate.getBytes(),userKeyArray)
+            val userKeyAsString : String = Base64.getEncoder().encodeToString(userKey)
+
+            val updatePerson : Person = person.copy(userKey = Some(userKeyAsString))
+            val compactJws = JwtUtil.createTokenFromPerson(updatePerson,key,expiration)
+
+            val json = Json.toJson(updatePerson)
             Ok(json).withHeaders(token->compactJws)
           }
           else
@@ -89,11 +115,10 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
         case None =>{
           Forbidden(Json.obj("message" -> "invalid"))
         }
-      }
-    }).recover{
-      case e:Exception=>{
-        InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
-      }
+      }).recover{
+        case e:Exception=>{
+          InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
+        }
     }
   }
 }
