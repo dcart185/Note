@@ -29,13 +29,13 @@ object CryptoUtil {
     key
   }
 
-  def generateKeyFromDerivedString(text:String):Array[Byte]={
+  def createRandomIv():Array[Byte]={
     val random : Random = new SecureRandom()
-    val iv : Array[Byte] = Array.fill[Byte](ivSize)(0)
-    random.nextBytes(iv)
-
-    generateKeyFromDerivedByteArray(text.getBytes(),iv)
+    val key : Array[Byte] = Array.fill[Byte](ivSize)(0)
+    random.nextBytes(key)
+    key
   }
+
 
   /**
     *

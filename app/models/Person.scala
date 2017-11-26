@@ -5,7 +5,7 @@ import play.api.libs.functional.syntax._
 
 
 case class Person(id:Option[Long], firstName:String, lastName:String, email:String, password:Option[String],
-                  masterKey:Option[String],userKey:Option[String])
+                  masterKey:Option[String],userKey:Option[String],userIv:Option[String])
 
 object Person {
   import Person._
@@ -18,7 +18,8 @@ object Person {
     (JsPath \ "email").read[String] and
     (JsPath \ "password").readNullable[String] and
     (JsPath \ "masterKey").readNullable[String] and
-    (JsPath \ "userKey").readNullable[String]
+    (JsPath \ "userKey").readNullable[String] and
+    (JsPath \ "userIv").readNullable[String]
     )(Person.apply _)
 
 

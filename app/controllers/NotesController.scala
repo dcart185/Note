@@ -1,24 +1,31 @@
 package controllers
 
+import java.util.Base64
 import javax.inject.Singleton
 
 import actions.JWTAuthentication
 import com.google.inject.Inject
-import models.Note
+import com.typesafe.config.Config
+import models.{Note, Person}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc._
 import repository.notes.{NotesRepository, NotesService}
+import utility.CryptoUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
+final case class KeyDoesntExist()
+
 @Singleton
 class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAuthentication,
-                                notesRepository: NotesRepository)(implicit ec:ExecutionContext)
+                                notesRepository: NotesRepository,config:Config)(implicit ec:ExecutionContext)
   extends AbstractController(cc){
 
   val logger: Logger = Logger(this.getClass())
   val notesService : NotesService = new NotesService(notesRepository)
+
+
 
   def getNote(noteId:Long) = jwtAuthentication.async{ implicit request =>
 
@@ -39,6 +46,23 @@ class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAu
     }
   }
 
+  def encryptedNotesContents(note:Note,person:Person) : Either[KeyDoesntExist,String] = {
+    (person.userKey,person.masterKey) match {
+      case (Some(userKey),Some(masterKey))=>{
+        val macKeyString : String = config.getString("mac.key")
+
+        //decrypt the master key with the user key
+        val encryptedMasterKeyAsBytes : Array[Byte] = Base64.getDecoder().decode(masterKey)
+        //val decryptedMasterKey : Array[Byte] = CryptoUtil.macThenDecrypt(encryptedMasterKeyAsBytes,userKey)
+        //encrypt the note contents with the master key
+        Left(KeyDoesntExist())
+      }
+      case _ => {
+        Left(KeyDoesntExist())
+      }
+    }
+  }
+
   def insertNote = jwtAuthentication.async(parse.json){ implicit request =>
 
     val noteResult = request.request.body.validate[Note]
@@ -49,6 +73,9 @@ class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAu
         Future(BadRequest(Json.obj("status" ->"KO", "message" -> "invalid input")))
       },
       note => {
+
+        //encryptedNotesContents(note,request.person)
+
         val toInsertNote : Note = note.copy(personId = request.person.id)
         val newNoteFuture : Future[Note]= Future(notesService.insertNote(toInsertNote))
         newNoteFuture.map(newNote =>{

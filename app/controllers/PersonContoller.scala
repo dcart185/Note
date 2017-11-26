@@ -34,7 +34,9 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
           val hashedPassword: String = BCrypt.hashpw(person.password.get, BCrypt.gensalt())
 
           //create a key to encrypt the master key
-          val userKeyArray : Array[Byte] = CryptoUtil.generateKeyFromDerivedString(person.password.get)
+          val iv : Array[Byte] = CryptoUtil.createRandomIv()
+          val userKeyArray : Array[Byte] = CryptoUtil.generateKeyFromDerivedByteArray(person.password.get.getBytes(),iv)
+          val userIvString : String = Base64.getEncoder().encodeToString(iv)
           val userKeyString : String = Base64.getEncoder().encodeToString(userKeyArray)
 
           //create a random "master" key that is encrypted
@@ -45,7 +47,7 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
 
           //update the person object
           val toBeSavedPerson : Person = person.copy(password = Some(hashedPassword),masterKey=Some(masterKeyAsString),
-            userKey = Some(userKeyString))
+            userKey = Some(userKeyString),userIv = Some(userIvString))
 
           //save the data into the database.  user key will not be saved.  only the user knows!
           val savedPerson: Future[Person] = Future(personService.insertPerson(toBeSavedPerson))
@@ -96,7 +98,9 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
             val seconds = config.getInt("jwt.expiration")
             val expiration : DateTime = DateTime.now().plusSeconds(seconds)
 
-            val userKey : Array[Byte] = CryptoUtil.generateKeyFromDerivedString(candidate)
+            val userKeyArray : Array[Byte] = Base64.getDecoder().decode(person.userIv.get)
+
+            val userKey : Array[Byte] = CryptoUtil.generateKeyFromDerivedByteArray(candidate.getBytes(),userKeyArray)
             val userKeyAsString : String = Base64.getEncoder().encodeToString(userKey)
 
             val updatePerson : Person = person.copy(userKey = Some(userKeyAsString))
