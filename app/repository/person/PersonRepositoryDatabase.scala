@@ -1,5 +1,5 @@
 package repository.person
-import java.sql.{CallableStatement, Connection, ResultSet}
+import java.sql.{CallableStatement, Connection, ResultSet, Types}
 import javax.inject.Inject
 
 import play.api.db._
@@ -14,11 +14,17 @@ class PersonRepositoryDatabase @Inject()(db:Database) extends PersonRepository {
 
     try{
       connection = db.getConnection()
-      cstm = connection.prepareCall("{CALL SP_INSERT_PERSON(?,?,?,?,?)}")
+      cstm = connection.prepareCall("{CALL SP_INSERT_PERSON(?,?,?,?,?,?)}")
       cstm.setString("in_first_name",person.firstName)
       cstm.setString("in_last_name",person.lastName)
       cstm.setString("in_email",person.email)
       cstm.setString("in_password",person.password.get)
+
+      person.masterKey match {
+        case Some(masterKey) => cstm.setString("in_master_key",masterKey)
+        case None => cstm.setNull("in_master_key",Types.VARCHAR)
+      }
+
       cstm.executeUpdate()
       cstm.getLong("insert_id")
     }
@@ -79,7 +85,7 @@ class PersonRepositoryDatabase @Inject()(db:Database) extends PersonRepository {
     val password = resultSet.getString("password")
     val masterKey = resultSet.getString("master_key")
     val masterKeyOpt = if(!resultSet.wasNull()) Some(masterKey) else None
-    
+
     Person(Some(id),firstName,lastName,email,Some(password),masterKeyOpt,None)
   }
 }
