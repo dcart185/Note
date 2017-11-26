@@ -16,9 +16,9 @@ import utility.CryptoUtil.DecryptFailure
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait UnableToDecrypt
-case object KeyDoesntExist extends UnableToDecrypt
-case object FailedDecryption extends UnableToDecrypt
+trait CryptoFailure
+case object KeyDoesntExist extends CryptoFailure
+case object FailedDecryption extends CryptoFailure
 
 @Singleton
 class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAuthentication,
@@ -39,12 +39,63 @@ class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAu
           NotFound("Note does not exist")
         }
         case Some(note)=>{
-          val json = Json.toJson(note)
-          Ok(json)
+          val decryptedNotesContentsEither : Either[CryptoFailure,String] = decryptNotesContents(note,request.person)
+          decryptedNotesContentsEither match {
+            case Left(cryptoFailure)=>{
+              logger.logger.error(s"Failed to decrypt. $cryptoFailure")
+              InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
+            }
+            case Right(decryptedNotesContents)=>{
+              val returnNote : Note = note.copy(note = decryptedNotesContents)
+              val json = Json.toJson(returnNote)
+              Ok(json)
+            }
+          }
         }
     }).recover{
       case e:Exception=>{
         InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
+      }
+    }
+  }
+
+
+  /**
+    *
+    * @param note
+    * @param person
+    * @return
+    */
+  def decryptNotesContents(note:Note, person:Person) : Either[CryptoFailure,String] = {
+    (person.userKey,person.masterKey) match {
+      case (Some(userKey),Some(masterKey))=>{
+        val macKeyString : String = config.getString("mac.key")
+
+        //decrypt the master key with the user key
+        val encryptedMasterKeyAsBytes : Array[Byte] = Base64.getDecoder().decode(masterKey)
+        val userKeyAsBytes : Array[Byte] = Base64.getDecoder().decode(userKey)
+        val decryptedMasterKeyEither : Either[DecryptFailure,Array[Byte]] = CryptoUtil
+          .macThenDecrypt(encryptedMasterKeyAsBytes,userKeyAsBytes, macKeyString.getBytes())
+
+        decryptedMasterKeyEither match {
+          case Left(decryptFailure) => Left(FailedDecryption)
+          case Right(decryptedMasterKeyInBytes)=>{
+            val encryptedNotes : Array[Byte] = Base64.getDecoder().decode(note.note)
+            val decryptedNoteEither : Either[DecryptFailure,Array[Byte]] = CryptoUtil
+              .macThenDecrypt(encryptedNotes, decryptedMasterKeyInBytes,macKeyString.getBytes())
+
+            decryptedNoteEither match {
+              case Left(decryptFailure) => Left(FailedDecryption)
+              case Right(decryptedNoteInBytes) => {
+                val decryptedNoteString : String = new String(decryptedNoteInBytes)
+                Right(decryptedNoteString)
+              }
+            }
+          }
+        }
+      }
+      case _ => {
+        Left(KeyDoesntExist)
       }
     }
   }
@@ -56,7 +107,7 @@ class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAu
     * @param person
     * @return the encrypted contents as a string
     */
-  def encryptedNotesContents(note:Note,person:Person) : Either[UnableToDecrypt,String] = {
+  def encryptNotesContents(note:Note, person:Person) : Either[CryptoFailure,String] = {
     (person.userKey,person.masterKey) match {
       case (Some(userKey),Some(masterKey))=>{
         val macKeyString : String = config.getString("mac.key")
@@ -96,7 +147,7 @@ class NotesController @Inject()(cc: ControllerComponents,jwtAuthentication:JWTAu
       },
       note => {
         //encrypt the note
-        val encryptedNoteEither : Either[UnableToDecrypt,String] = encryptedNotesContents(note,request.person)
+        val encryptedNoteEither : Either[CryptoFailure,String] = encryptNotesContents(note,request.person)
 
         encryptedNoteEither match {
           case Left(unableToDecrypt)=>{
