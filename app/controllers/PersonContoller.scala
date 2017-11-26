@@ -94,11 +94,18 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
       personOpt match {
         case Some(person)=>{
           if (BCrypt.checkpw(candidate, person.password.get)) {
-            val json = Json.toJson(person)
+
             val key = config.getString("jwt.key")
             val seconds = config.getInt("jwt.expiration")
             val expiration : DateTime = DateTime.now().plusSeconds(seconds)
-            val compactJws = JwtUtil.createTokenFromPerson(person,key,expiration)
+
+            val userKey : Array[Byte] = CryptoUtil.generateKeyFromDerivedString(candidate)
+            val userKeyAsString : String = Base64.getEncoder().encodeToString(userKey)
+
+            val updatePerson : Person = person.copy(userKey = Some(userKeyAsString))
+            val compactJws = JwtUtil.createTokenFromPerson(updatePerson,key,expiration)
+
+            val json = Json.toJson(updatePerson)
             Ok(json).withHeaders(token->compactJws)
           }
           else
