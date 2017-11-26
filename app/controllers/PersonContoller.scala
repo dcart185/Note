@@ -1,7 +1,6 @@
 package controllers
 
-import java.security.SecureRandom
-import java.util.{Base64, Random}
+import java.util.Base64
 import javax.inject.{Inject, Singleton}
 
 import com.typesafe.config.Config
@@ -11,7 +10,6 @@ import org.mindrot.jbcrypt.BCrypt
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
 import repository.person.{PersonRepository, PersonService}
-import utility.CryptoUtil.ivSize
 import utility.{CryptoUtil, JwtUtil}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -68,8 +66,8 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
 
   def getPerson(id:Long)  = Action.async { implicit request =>
     val personOptionFuture : Future[Option[Person]] = Future(personService.getPerson(id))
-    personOptionFuture.map(personOption=>{
-      personOption match {
+    personOptionFuture.map(
+      {
         case None =>{
           NotFound("Person does not exist")
         }
@@ -77,8 +75,7 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
           val json = Json.toJson(person)
           Ok(json)
         }
-      }
-    }).recover{
+      }).recover{
       case e:Exception=>{
         InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
       }
@@ -90,8 +87,8 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
     val candidate : String = (request.body \ "password").as[String]
 
     val personOptionFuture : Future[Option[Person]] = Future(personService.getPersonByEmail(email))
-    personOptionFuture.map(personOpt =>{
-      personOpt match {
+    personOptionFuture.map(
+      {
         case Some(person)=>{
           if (BCrypt.checkpw(candidate, person.password.get)) {
 
@@ -114,11 +111,10 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
         case None =>{
           Forbidden(Json.obj("message" -> "invalid"))
         }
-      }
-    }).recover{
-      case e:Exception=>{
-        InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
-      }
+      }).recover{
+        case e:Exception=>{
+          InternalServerError(Json.obj("status" ->"KO", "message" -> "something went wrong"))
+        }
     }
   }
 }
