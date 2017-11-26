@@ -4,7 +4,8 @@ import play.api.libs.json._
 import play.api.libs.functional.syntax._
 
 
-case class Person(id:Option[Long], firstName:String, lastName:String, email:String, password:Option[String])
+case class Person(id:Option[Long], firstName:String, lastName:String, email:String, password:Option[String],
+                  masterKey:Option[String],userKey:Option[String],userIv:Option[String])
 
 object Person {
   import Person._
@@ -15,7 +16,10 @@ object Person {
     (JsPath \ "firstName").read[String] and
     (JsPath \ "lastName").read[String] and
     (JsPath \ "email").read[String] and
-    (JsPath \ "password").readNullable[String]
+    (JsPath \ "password").readNullable[String] and
+    (JsPath \ "masterKey").readNullable[String] and
+    (JsPath \ "userKey").readNullable[String] and
+    (JsPath \ "userIv").readNullable[String]
     )(Person.apply _)
 
 
@@ -24,7 +28,8 @@ object Person {
       "id" -> person.id,
       "firstName" -> person.firstName,
       "lastName" -> person.lastName,
-      "email" -> person.email
+      "email" -> person.email,
+      "userKey" -> person.userKey
     )
   }
 }
