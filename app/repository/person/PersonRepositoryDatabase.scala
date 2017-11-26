@@ -77,7 +77,9 @@ class PersonRepositoryDatabase @Inject()(db:Database) extends PersonRepository {
     val lastName = resultSet.getString("last_name")
     val email = resultSet.getString("email")
     val password = resultSet.getString("password")
-
-    Person(Some(id),firstName,lastName,email,Some(password))
+    val masterKey = resultSet.getString("master_key")
+    val masterKeyOpt = if(!resultSet.wasNull()) Some(masterKey) else None
+    
+    Person(Some(id),firstName,lastName,email,Some(password),masterKeyOpt,None)
   }
 }
