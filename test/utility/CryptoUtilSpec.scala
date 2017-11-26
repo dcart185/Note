@@ -18,8 +18,8 @@ class CryptoUtilSpec extends PlaySpec with BeforeAndAfter{
 
       val password : String = "SomeRandomPasswordIWontUse"
 
-      val generatedKey1 : Array[Byte] = CryptoUtil.generateKeyFromDevivedString(password.getBytes,iv)
-      val generatedKey2 : Array[Byte] = CryptoUtil.generateKeyFromDevivedString(password.getBytes,iv)
+      val generatedKey1 : Array[Byte] = CryptoUtil.generateKeyFromDerivedByteArray(password.getBytes,iv)
+      val generatedKey2 : Array[Byte] = CryptoUtil.generateKeyFromDerivedByteArray(password.getBytes,iv)
       generatedKey1 mustEqual generatedKey2
     }
   }

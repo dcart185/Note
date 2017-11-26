@@ -1,5 +1,7 @@
 package controllers
 
+import java.security.SecureRandom
+import java.util.{Base64, Random}
 import javax.inject.{Inject, Singleton}
 
 import com.typesafe.config.Config
@@ -9,7 +11,8 @@ import org.mindrot.jbcrypt.BCrypt
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
 import repository.person.{PersonRepository, PersonService}
-import utility.JwtUtil
+import utility.CryptoUtil.ivSize
+import utility.{CryptoUtil, JwtUtil}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -31,7 +34,22 @@ class PersonController @Inject()(cc: ControllerComponents, personRepository: Per
 
         if(person.password.nonEmpty) {
           val hashedPassword: String = BCrypt.hashpw(person.password.get, BCrypt.gensalt())
-          val toBeSavedPerson : Person = person.copy(password = Some(hashedPassword))
+
+          //create a key to encrypt the master key
+          val userKeyArray : Array[Byte] = CryptoUtil.generateKeyFromDerivedString(person.password.get)
+          val userKeyString : String = Base64.getEncoder().encodeToString(userKeyArray)
+
+          //create a random "master" key that is encrypted
+          val masterKey : Array[Byte] = CryptoUtil.createRandomKey()
+          val macKeyAsString : String = config.getString("mac.key")
+          val encryptedMasterKey : Array[Byte] = CryptoUtil.encryptThenMac(masterKey,userKeyArray,macKeyAsString.getBytes())
+          val masterKeyAsString : String = Base64.getEncoder().encodeToString(encryptedMasterKey)
+
+          //update the person object
+          val toBeSavedPerson : Person = person.copy(password = Some(hashedPassword),masterKey=Some(masterKeyAsString),
+            userKey = Some(userKeyString))
+
+          //save the data into the database.  user key will not be saved.  only the user knows!
           val savedPerson: Future[Person] = Future(personService.insertPerson(toBeSavedPerson))
           savedPerson.map(person=>{
             Ok(Json.obj("status" -> "OK", "message" -> (s"The user has been saved with id: ${person.id.get}")))

@@ -18,7 +18,24 @@ object CryptoUtil {
   private val ivSize = 16
   private val macDigest = new SHA256Digest
 
+  val keySize = 16
+
   case class DecryptFailure(reason:String)
+
+  def createRandomKey():Array[Byte]={
+    val random : Random = new SecureRandom()
+    val key : Array[Byte] = Array.fill[Byte](keySize)(0)
+    random.nextBytes(key)
+    key
+  }
+
+  def generateKeyFromDerivedString(text:String):Array[Byte]={
+    val random : Random = new SecureRandom()
+    val iv : Array[Byte] = Array.fill[Byte](ivSize)(0)
+    random.nextBytes(iv)
+
+    generateKeyFromDerivedByteArray(text.getBytes(),iv)
+  }
 
   /**
     *
@@ -26,7 +43,7 @@ object CryptoUtil {
     * @param iv
     * @return the key as an array of bytes
     */
-  def generateKeyFromDevivedString(shared:Array[Byte],iv:Array[Byte]):Array[Byte] ={
+  def generateKeyFromDerivedByteArray(shared:Array[Byte], iv:Array[Byte]):Array[Byte] ={
     val length : Int = 16
     val data = new Array[Byte](length)
     val digest = new SHA256Digest
