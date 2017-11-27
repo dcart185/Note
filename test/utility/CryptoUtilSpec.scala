@@ -41,6 +41,9 @@ class CryptoUtilSpec extends PlaySpec with BeforeAndAfter{
       val decryptedData = CryptoUtil.decryptData(encryptedData, iv, key)
       val decryptedText: String = new String(decryptedData)
 
+      println(s"Encrypted:$toBeEncrypted")
+      println(s"Decrypted:$decryptedText")
+
       toBeEncrypted mustEqual decryptedText
 
     }
