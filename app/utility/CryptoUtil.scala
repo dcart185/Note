@@ -114,7 +114,7 @@ object CryptoUtil {
     */
   def encryptData(data:Array[Byte], iv:Array[Byte], key:Array[Byte]) : Array[Byte]={
     val cbcCipher : CBCBlockCipher = new CBCBlockCipher(new RijndaelEngine(256))
-    val cipher = new PaddedBufferedBlockCipher(cbcCipher)
+    val cipher = new PaddedBufferedBlockCipher(cbcCipher,new PKCS7Padding())
     val keyParam : KeyParameter = new KeyParameter(key)
     val keyWithIv = new ParametersWithIV(keyParam, iv)
 
@@ -182,7 +182,7 @@ object CryptoUtil {
     */
   def decryptData(data:Array[Byte], iv:Array[Byte], key:Array[Byte]) : Array[Byte]= {
     val cbcCipher : CBCBlockCipher = new CBCBlockCipher(new RijndaelEngine(256))
-    val cipher = new PaddedBufferedBlockCipher(cbcCipher)
+    val cipher = new PaddedBufferedBlockCipher(cbcCipher,new PKCS7Padding())
     val keyParam : KeyParameter = new KeyParameter(key)
     val keyWithIv = new ParametersWithIV(keyParam, iv)
 
