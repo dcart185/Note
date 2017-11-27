@@ -1,24 +1,26 @@
 package utility
 import java.io._
 import java.security.{MessageDigest, SecureRandom}
+import java.util
 import java.util.{Base64, Random}
 
 import org.bouncycastle.crypto.CipherParameters
 import org.bouncycastle.crypto.digests.SHA256Digest
-import org.bouncycastle.crypto.engines.AESEngine
+import org.bouncycastle.crypto.engines.{AESEngine, RijndaelEngine}
 import org.bouncycastle.crypto.generators.KDF1BytesGenerator
 import org.bouncycastle.crypto.macs.HMac
-import org.bouncycastle.crypto.modes.CFBBlockCipher
+import org.bouncycastle.crypto.modes.{CBCBlockCipher, CFBBlockCipher}
+import org.bouncycastle.crypto.paddings.{PKCS7Padding, PaddedBufferedBlockCipher}
 import org.bouncycastle.crypto.params.{KDFParameters, KeyParameter, ParametersWithIV}
 
 
 object CryptoUtil {
-  private val defaultChunkSize = 64
-  private val bitBlockSize = 8
-  private val ivSize = 16
+  private val defaultChunkSize = 32
+  //private val bitBlockSize = 8
+  private val ivSize = 32
   private val macDigest = new SHA256Digest
 
-  val keySize = 16
+  val keySize = 32
 
   case class DecryptFailure(reason:String)
 
@@ -44,7 +46,7 @@ object CryptoUtil {
     * @return the key as an array of bytes
     */
   def generateKeyFromDerivedByteArray(shared:Array[Byte], iv:Array[Byte]):Array[Byte] ={
-    val length : Int = 16
+    val length : Int = keySize
     val data = new Array[Byte](length)
     val digest = new SHA256Digest
     val kDF1BytesGenerator = new KDF1BytesGenerator(digest)
@@ -62,9 +64,7 @@ object CryptoUtil {
     */
   def encryptThenMac(data:Array[Byte],aesKey:Array[Byte],macKey:Array[Byte]):Array[Byte]={
     //first create a random iv
-    val random : Random = new SecureRandom()
-    val iv : Array[Byte] = Array.fill[Byte](ivSize)(0)
-    random.nextBytes(iv)
+    val iv : Array[Byte] = createRandomIv()
 
     //encrypt the data
     val encryptedData : Array[Byte] = encryptData(data,iv,aesKey)
@@ -113,39 +113,21 @@ object CryptoUtil {
     * @return encrypted data
     */
   def encryptData(data:Array[Byte], iv:Array[Byte], key:Array[Byte]) : Array[Byte]={
-    val cfb : CFBBlockCipher = new CFBBlockCipher(new AESEngine,bitBlockSize)
+    val cbcCipher : CBCBlockCipher = new CBCBlockCipher(new RijndaelEngine(256))
+    val cipher = new PaddedBufferedBlockCipher(cbcCipher,new PKCS7Padding())
     val keyParam : KeyParameter = new KeyParameter(key)
-    cfb.reset()
-    cfb.init(true,new ParametersWithIV(keyParam,iv))
+    val keyWithIv = new ParametersWithIV(keyParam, iv)
 
-    val chunkSize : Int= if (data.length < defaultChunkSize) data.length else defaultChunkSize
-    var inBuff : Array[Byte] = Array.fill[Byte](chunkSize)(0)
-    var outBuff : Array[Byte] = Array.fill[Byte](chunkSize)(0)
+    cipher.init(true,keyWithIv)
 
-    val inputStream : ByteArrayInputStream = new ByteArrayInputStream(data)
-    val outputStream : ByteArrayOutputStream = new ByteArrayOutputStream(data.length)
+    val encryptedData : Array[Byte] = Array.fill[Byte](cipher.getOutputSize(data.length))(0)
+    val totalBytes = cipher.processBytes(data,0,data.length,encryptedData,0)
+    val doFinalCount : Int = cipher.doFinal(encryptedData,totalBytes)
 
-    var totalBytesRead : Long = 0
-    var numberOfBytesRead : Long = 0
-    while(numberOfBytesRead != -1 && totalBytesRead < data.length){
-      numberOfBytesRead = inputStream.read(inBuff)
+    val returnEncryptedData : Array[Byte] = Array.fill[Byte](totalBytes+doFinalCount)(0)
+    Array.copy(encryptedData,0,returnEncryptedData,0,returnEncryptedData.length)
+    returnEncryptedData
 
-      if(numberOfBytesRead != -1){
-        totalBytesRead = totalBytesRead + numberOfBytesRead
-        cfb.processBytes(inBuff,0,inBuff.length,outBuff,0)
-        outputStream.write(outBuff)
-
-
-        if(data.length < totalBytesRead + inBuff.length){
-          val newSize : Int = data.length - totalBytesRead.toInt
-          inBuff = Array.fill[Byte](newSize)(0)
-          outBuff = Array.fill[Byte](newSize)(0)
-        }
-      }
-    }
-    outputStream.flush()
-    outputStream.close()
-    outputStream.toByteArray
   }
 
 
@@ -199,38 +181,20 @@ object CryptoUtil {
     * @return decrypted data
     */
   def decryptData(data:Array[Byte], iv:Array[Byte], key:Array[Byte]) : Array[Byte]= {
-    val cfb : CFBBlockCipher = new CFBBlockCipher(new AESEngine,bitBlockSize)
+    val cbcCipher : CBCBlockCipher = new CBCBlockCipher(new RijndaelEngine(256))
+    val cipher = new PaddedBufferedBlockCipher(cbcCipher,new PKCS7Padding())
     val keyParam : KeyParameter = new KeyParameter(key)
-    cfb.reset()
-    cfb.init(false,new ParametersWithIV(keyParam,iv))
+    val keyWithIv = new ParametersWithIV(keyParam, iv)
 
-    val chunkSize : Int= if (data.length < defaultChunkSize) data.length else defaultChunkSize
-    var inBuff : Array[Byte] = Array.fill[Byte](chunkSize)(0)
-    var outBuff : Array[Byte] = Array.fill[Byte](chunkSize)(0)
+    cipher.init(false,keyWithIv)
 
-    val inputStream : ByteArrayInputStream = new ByteArrayInputStream(data)
-    val outputStream : ByteArrayOutputStream = new ByteArrayOutputStream(data.length)
+    val decryptedData : Array[Byte] = Array.fill[Byte](cipher.getOutputSize(data.length))(0)
+    val totalBytes = cipher.processBytes(data,0,data.length,decryptedData,0)
+    val doFinalCount : Int = cipher.doFinal(decryptedData,totalBytes)
 
-    var totalBytesRead : Long = 0
-    var numberOfBytesRead : Long = 0
-    while(numberOfBytesRead != -1 && totalBytesRead < data.length){
-      numberOfBytesRead = inputStream.read(inBuff)
-
-      if(numberOfBytesRead != -1){
-        totalBytesRead = totalBytesRead + numberOfBytesRead
-        cfb.processBytes(inBuff,0,inBuff.length,outBuff,0)
-        outputStream.write(outBuff)
-
-
-        if(data.length < totalBytesRead + inBuff.length){
-          val newSize : Int = data.length - totalBytesRead.toInt
-          inBuff = Array.fill[Byte](newSize)(0)
-          outBuff = Array.fill[Byte](newSize)(0)
-        }
-      }
-    }
-    outputStream.flush()
-    outputStream.close()
-    outputStream.toByteArray
+    //decryptedData
+    val returnDecryptedData : Array[Byte] = Array.fill[Byte](totalBytes+doFinalCount)(0)
+    Array.copy(decryptedData,0,returnDecryptedData,0,returnDecryptedData.length)
+    returnDecryptedData
   }
 }
