@@ -122,8 +122,12 @@ object CryptoUtil {
 
     val encryptedData : Array[Byte] = Array.fill[Byte](cipher.getOutputSize(data.length))(0)
     val totalBytes = cipher.processBytes(data,0,data.length,encryptedData,0)
-    cipher.doFinal(encryptedData,totalBytes)
-    encryptedData
+    val doFinalCount : Int = cipher.doFinal(encryptedData,totalBytes)
+
+    val returnEncryptedData : Array[Byte] = Array.fill[Byte](totalBytes+doFinalCount)(0)
+    Array.copy(encryptedData,0,returnEncryptedData,0,returnEncryptedData.length)
+    returnEncryptedData
+
   }
 
 
@@ -186,8 +190,11 @@ object CryptoUtil {
 
     val decryptedData : Array[Byte] = Array.fill[Byte](cipher.getOutputSize(data.length))(0)
     val totalBytes = cipher.processBytes(data,0,data.length,decryptedData,0)
-    val t = cipher.doFinal(decryptedData,totalBytes)
+    val doFinalCount : Int = cipher.doFinal(decryptedData,totalBytes)
+
     //decryptedData
-    util.Arrays.copyOf(decryptedData,totalBytes+t)
+    val returnDecryptedData : Array[Byte] = Array.fill[Byte](totalBytes+doFinalCount)(0)
+    Array.copy(decryptedData,0,returnDecryptedData,0,returnDecryptedData.length)
+    returnDecryptedData
   }
 }
