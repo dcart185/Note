@@ -13,12 +13,12 @@ import org.bouncycastle.crypto.params.{KDFParameters, KeyParameter, ParametersWi
 
 
 object CryptoUtil {
-  private val defaultChunkSize = 64
+  private val defaultChunkSize = 32
   private val bitBlockSize = 8
-  private val ivSize = 16
+  private val ivSize = 32
   private val macDigest = new SHA256Digest
 
-  val keySize = 16
+  val keySize = 32
 
   case class DecryptFailure(reason:String)
 
@@ -44,7 +44,7 @@ object CryptoUtil {
     * @return the key as an array of bytes
     */
   def generateKeyFromDerivedByteArray(shared:Array[Byte], iv:Array[Byte]):Array[Byte] ={
-    val length : Int = 16
+    val length : Int = keySize
     val data = new Array[Byte](length)
     val digest = new SHA256Digest
     val kDF1BytesGenerator = new KDF1BytesGenerator(digest)

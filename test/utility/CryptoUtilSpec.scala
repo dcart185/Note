@@ -13,7 +13,7 @@ class CryptoUtilSpec extends PlaySpec with BeforeAndAfter{
   "Key generator" must {
     "be be able to generate a key from a password" in {
       val random : Random = new SecureRandom()
-      val iv : Array[Byte] = Array.fill[Byte](16)(0)
+      val iv : Array[Byte] = Array.fill[Byte](32)(0)
       random.nextBytes(iv)
 
       val password : String = "SomeRandomPasswordIWontUse"
@@ -31,8 +31,8 @@ class CryptoUtilSpec extends PlaySpec with BeforeAndAfter{
       val toBeEncryptedBytes: Array[Byte] = toBeEncrypted.getBytes()
 
       val random: Random = new SecureRandom()
-      val iv: Array[Byte] = Array.fill[Byte](16)(0)
-      val key: Array[Byte] = Array.fill[Byte](16)(0)
+      val iv: Array[Byte] = Array.fill[Byte](32)(0)
+      val key: Array[Byte] = Array.fill[Byte](32)(0)
       random.nextBytes(iv)
       random.nextBytes(key)
 
@@ -48,9 +48,9 @@ class CryptoUtilSpec extends PlaySpec with BeforeAndAfter{
     "be able to mac" in {
       val toBeEncrypted: String = "Here is some random text that needs to be encrypted and mac"
       val random: Random = new SecureRandom()
-      val iv: Array[Byte] = Array.fill[Byte](16)(0)
-      val key: Array[Byte] = Array.fill[Byte](16)(0)
-      val macKey: Array[Byte] = Array.fill[Byte](16)(0)
+      val iv: Array[Byte] = Array.fill[Byte](32)(0)
+      val key: Array[Byte] = Array.fill[Byte](32)(0)
+      val macKey: Array[Byte] = Array.fill[Byte](32)(0)
 
       val encryptedData = CryptoUtil.encryptData(toBeEncrypted.getBytes(), iv, key)
 
@@ -65,8 +65,8 @@ class CryptoUtilSpec extends PlaySpec with BeforeAndAfter{
 
       val toBeEncrypted: String = "testing encrypt then mac and mac then decrypt"
       val random: Random = new SecureRandom()
-      val aesKey: Array[Byte] = Array.fill[Byte](16)(0)
-      val macKey: Array[Byte] = Array.fill[Byte](16)(0)
+      val aesKey: Array[Byte] = Array.fill[Byte](32)(0)
+      val macKey: Array[Byte] = Array.fill[Byte](32)(0)
 
       val encryptedData : Array[Byte] = CryptoUtil.encryptThenMac(toBeEncrypted.getBytes(),aesKey,macKey)
       val decryptedDataEither : Either[DecryptFailure,Array[Byte]] = CryptoUtil.macThenDecrypt(encryptedData,aesKey,macKey)
